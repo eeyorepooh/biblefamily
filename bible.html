@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verses</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; margin: 20px; padding-bottom: 56px; background-color: #fafafa; }
+ 
+  .top-toolbar {
+    max-width: 1200px;
+    margin: 0 auto 20px auto;
+    display: flex;
+    gap: 18px;
+    align-items: center;
+    background: #fff;
+    padding: 10px 20px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-family: 'Trebuchet MS', 'Trebuchet SMS', sans-serif;
+  }
+  .back-link {
+    color: #000;
+    text-decoration: none;
+    font-weight: normal;
+    font-family: 'Trebuchet MS', 'Trebuchet SMS', sans-serif;
+    font-size: 0.85rem;
+  }
+  .back-link:hover { color: #2196F3; text-decoration: underline; }
+  .bottom-toolbar {
+    position: fixed;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    width: auto;
+    display: flex;
+    gap: 18px;
+    background: #fff;
+    padding: 6px 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    font-size: 0.8rem;
+    font-family: 'Trebuchet MS', 'Trebuchet SMS', sans-serif;
+  }
+  .toggle-group { display: flex; align-items: center; gap: 6px; }
+  .switch { position: relative; display: inline-block; width: 34px; height: 18px; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 18px; }
+  .slider:before { position: absolute; content: ""; height: 13px; width: 13px; left: 3px; bottom: 2.5px; background-color: white; transition: .4s; border-radius: 50%; }
+  input:checked + .slider { background-color: #2196F3; }
+  input:checked + .slider:before { transform: translateX(16px); }
+
+  .control-panel { max-width: 1200px; margin: 0 auto 20px auto; background: #ffffff; padding: 20px; border: 1px solid transparent; border-radius: 8px; transition: background-color 0.2s; }
+  /* Visual visual drop-zone feedback cue style state */
+  .control-panel.dragover { background-color: #e3f2fd; border-color: #2196F3; }
+  .control-panel.hide-box { display: none; }
+  textarea { width: 100%; height: 160px; padding: 10px; font-family: inherit; font-size: 1rem; border: 1px solid transparent; border-radius: 4px; resize: vertical; }
+
+  /* Table of Contents Styling */
+  .toc-card { max-width: 1200px; margin: 0 auto 20px auto; background: #fff; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; display: none; }
+  .toc-title { font-weight: bold; font-size: 1.2rem; font-family: 'Trebuchet MS', 'Trebuchet SMS', sans-serif; margin-bottom: 10px; color: #000; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+  .toc-list, .toc-children { list-style-type: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+  .toc-link { color: #000; text-decoration: none; font-weight: 600; font-family: 'Trebuchet MS', 'Trebuchet SMS', sans-serif; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .toc-link:hover { text-decoration: underline; }
+  .toc-link.level-h2 { font-weight: 500; font-size: 0.95rem; }
+  .toc-link.level-h3 { font-weight: 500; font-size: 0.9rem; }
+  /* h2 lists (under h1) and h4 lists (under h2) start hidden — revealed by clicking their parent entry */
+  .toc-children { display: none; padding-left: 24px; margin-top: 8px; }
+  .toc-children.expanded { display: flex; }
+  .toc-caret { font-size: 0.7rem; color: #888; transition: transform 0.2s; flex-shrink: 0; }
+  .toc-caret.rotated { transform: rotate(90deg); }
+
+  /* Collapsible Layout Updates */
+  .chapter-card { max-width: 1200px; margin: 0 auto 30px auto; background: white; border: 1px solid transparent; border-radius: 8px; overflow: hidden; scroll-margin-top: 20px; }
+ 
+  .user-header {
+    background: #ffffff;
+    padding: 15px 20px;
+    color: #000;
+    font-size: 1.5rem;
+    font-family: 'Trebuchet MS', 'Trebuchet SMS', sans-serif;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+    list-style: none; /* Hides triangle bullet on Firefox/Safari */
+  }
+  .user-header::-webkit-details-marker { display: none; } /* Hides triangle bullet on Chrome/Edge/WebKit */
+
+  /* Distinct type treatment per heading level: h1 = large chapter title (default fill), h2 = smaller sub-heading (red fill, white text) */
+  .user-header.level-h1 { font-size: 1.7rem; font-family: 'Trebuchet MS', 'Trebuchet SMS', sans-serif; font-weight: 700; }
+  .user-header.level-h2 { font-size: 1.15rem; font-family: 'Trebuchet MS', 'Trebuchet SMS', sans-serif; font-weight: 600; background: #d32f2f; color: #fff; }
+
+  /* Container inside an h1 chapter that holds its nested h2 sub-sections (and any text with no h2 yet) */
+  .chapter-body { padding: 15px 20px 20px 20px; display: flex; flex-direction: column; gap: 15px; }
+
+  /* h2 sub-sections collapse independently, nested inside their parent h1 chapter */
+  .chapter-card.nested { max-width: none; margin: 0; border: 1px solid transparent; border-radius: 6px; }
+  .chapter-card.nested > .grid-container { padding: 15px; }
+
+  /* Interactive Rotating Toggle Arrow Icon */
+  .toggle-icon {
+    font-size: 1rem;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: rotate(-90deg); /* Facing right when collapsed */
+  }
+  details[open] .toggle-icon {
+    transform: rotate(0deg); /* Snaps downward when expanded */
+  }
+
+  .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px 30px; padding: 20px; }
+
+  /* h3: a plain, non-collapsible sub-heading that spans both text columns. Visible in the
+     section body, but intentionally left out of the table of contents. */
+  .sub-header { grid-column: 1 / -1; background: #ffffff; color: #000; font-weight: 700; font-size: 1rem; font-family: 'Trebuchet MS', 'Trebuchet SMS', sans-serif; padding: 8px 4px; margin-top: 4px; scroll-margin-top: 20px; }
+
+  /* h4: the opposite of h3 — it appears in the table of contents (styled like the h3 TOC
+     entries) and links down to this exact spot, but renders nothing visible in the section
+     body itself. It's kept in normal document flow (not display:none) so smooth-scrolling to
+     it still works; it's just collapsed to zero height and hidden from view. */
+  .sub-header-anchor { grid-column: 1 / -1; height: 0; margin: 0; padding: 0; border: 0; overflow: hidden; visibility: hidden; scroll-margin-top: 20px; }
+
+  .text-segment { padding: 12px; background-color: #ffffff; border: 1px solid transparent; border-radius: 4px; font-family: Georgia, 'Times New Roman', serif; line-height: 1.6; }
+  .col-right { letter-spacing: 2px; font-weight: 600; text-transform: uppercase; }
+  .highlight-blue { background-color: #e3f2fd !important; border-color: #bbdefb !important; }
+
+  body.hide-left .col-left { display: none !important; }
+  body.hide-left .user-header { grid-column: span 1 !important; }
+  body.hide-left .grid-container { grid-template-columns: 1fr !important; }
+
+  /* Floating back-to-top button: scrolls to top and collapses every h1/h2 <details>.
+     Hidden until the page is scrolled down a bit, then fades in. */
+  .back-to-top {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    width: 32px;
+    height: 32px;
+    border: 1px solid #e0e0e0;
+    border-radius: 50%;
+    background: #fff;
+    color: #000;
+    font-size: 0.95rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(8px);
+    transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
+    z-index: 1000;
+  }
+  .back-to-top.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+  .back-to-top:hover { background: #f0f4ff; }
+
+  /* Today's Verses summary panel: pulls matching h2 verse items from verse.html's shared
+     markup, based on the latest checked number/day from calendar.html's shared storage.
+     Fixed/floating so it stays on screen while the page scrolls, with its own internal
+     scrollbar so a long verse list doesn't run off the bottom of the viewport. */
+  .verses-summary-box {
+    position: fixed;
+    top: 90px;
+    right: 20px;
+    width: 320px;
+    max-width: calc(100vw - 40px);
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 15px 20px;
+    font-family: 'Trebuchet MS', 'Trebuchet SMS', sans-serif;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    z-index: 999;
+  }
+  .verses-summary-box.hidden-box { display: none; }
+  .verses-summary-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+    margin-bottom: 10px;
+  }
+  .verses-summary-title {
+    font-weight: bold;
+    font-size: 1.2rem;
+    color: #000;
+  }
+  .verses-summary-uncheck-btn {
+    background: transparent;
+    border: none;
+    color: #a5adba;
+    font-size: 0.72rem;
+    font-weight: normal;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    cursor: pointer;
+    padding: 3px 7px;
+    border-radius: 4px;
+  }
+  .verses-summary-uncheck-btn:hover { background: #eef0f3; color: #5e6c84; }
+  .verses-summary-group { margin-bottom: 12px; }
+  .verses-summary-group:last-child { margin-bottom: 0; }
+  .verses-summary-group-title {
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: #5e6c84;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 4px;
+  }
+  .verses-summary-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 0;
+  }
+  .verses-summary-item input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .verses-summary-item a {
+    color: #2563eb;
+    text-decoration: none;
+    font-size: 0.95rem;
+  }
+  .verses-summary-item a:hover { text-decoration: underline; }
+  .verses-summary-item.done a { color: #6b778c; text-decoration: line-through; }
+  .verses-summary-empty { color: #888; font-size: 0.9rem; font-style: italic; }
+
+  /* Floating circle that hides/shows the summary panel above, stacked just above the
+     existing back-to-top arrow button. */
+  .verses-toggle-circle {
+    position: fixed;
+    right: 20px;
+    bottom: 66px;
+    width: 32px;
+    height: 32px;
+    border: 1px solid #e0e0e0;
+    border-radius: 50%;
+    background: #fff;
+    color: #000;
+    font-size: 0.8rem;
+    font-weight: 400;
+    font-family: 'Trebuchet MS', 'Trebuchet SMS', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    z-index: 1000;
+  }
+  .verses-toggle-circle:hover { background: #f0f4ff; }
+  .verses-toggle-circle.active { background: #d32f2f; color: #fff; border-color: #d32f2f; }
+
+  /* Mini calendar popup: moved in from the old standalone calendar.html page. Toggled by
+     the "C" circle, stacked directly above the "V" (verses) toggle circle. */
+  .calendar-toggle-circle { bottom: 108px; font-size: 0.95rem; }
+
+  .calendar-popup {
+    position: fixed;
+    right: 20px;
+    bottom: 170px;
+    z-index: 999;
+    background: #f4f5f7;
+    border: 1px solid #dcdfe4;
+    border-radius: 10px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.18);
+    padding: 12px;
+  }
+  .calendar-popup.hidden-box { display: none; }
+
+  .calendar-mini-table { border-collapse: collapse; margin: 0 auto; }
+  .calendar-mini-table th, .calendar-mini-table td {
+    width: 32px;
+    height: 32px;
+    text-align: center;
+    vertical-align: middle;
+    border: 1px solid #dcdfe4;
+    padding: 0;
+  }
+  .calendar-mini-table th {
+    background: #172b4d;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
+  .calendar-mini-table td.empty { border: none; background: transparent; }
+  .calendar-mini-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 1px;
+  }
+  .calendar-mini-cell input[type="checkbox"] { width: 11px; height: 11px; cursor: pointer; }
+  .calendar-mini-cell span { font-size: 0.68rem; font-weight: 600; }
+  .calendar-mini-table td.multiple-of-3 { background-color: #49ecf5; }
+  .calendar-mini-table td.multiple-of-3 .calendar-mini-cell span { color: #000000; }
+
+  /* Toast shown when a "new verse day" (multiple-of-3) date is checked on the mini calendar */
+  .calendar-toast {
+    position: fixed;
+    left: 50%;
+    top: 20px;
+    transform: translateX(-50%) translateY(-8px);
+    z-index: 1100;
+    background: #172b4d;
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s, transform 0.25s, visibility 0.25s;
+    pointer-events: none;
+  }
+  .calendar-toast.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+<script>
+  // Registers the service worker so this page (and its linked pages/assets) work offline
+  // once visited at least once with a connection. Paths are relative, so this works
+  // whether the site sits at the root of the domain or in a subfolder.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch((err) => {
+        console.warn('Service worker registration failed:', err);
+      });
+    });
+  }
+</script>
+</head>
+<body>
+
+<div id="versesSummaryBox" class="verses-summary-box">
+  <div class="verses-summary-header">
+    <div class="verses-summary-title">Today's Verses</div>
+    <button id="uncheckAllVersesBtn" class="verses-summary-uncheck-btn" title="Uncheck all">Uncheck all</button>
+  </div>
+  <div id="versesSummaryList"></div>
+</div>
+
+<div id="calendarToast" class="calendar-toast"></div>
+
+<div id="calendarPopup" class="calendar-popup hidden-box">
+  <table id="calendarTable" class="calendar-mini-table"></table>
+</div>
+
+<div class="top-toolbar">
+  <a href="index.html" class="back-link">&larr; Back to Home</a>
+  <div class="toggle-group">
+      <label class="switch">
+          <input type="checkbox" id="toggleInput">
+          <span class="slider"></span>
+      </label>
+      <span id="inputLabel">Show Input Box</span>
+  </div>
+</div>
+
+<div class="bottom-toolbar">
+  <div class="toggle-group">
+      <label class="switch">
+          <input type="checkbox" id="toggleLeft">
+          <span class="slider"></span>
+      </label>
+      <span id="leftLabel">Show Original Text</span>
+  </div>
+</div>
+
+<div class="control-panel hide-box" id="inputContainer">
+  <h3>Master Book Workspace <span style="font-weight: normal; font-size: 0.9rem; color: #000;">(Drag & Drop a .txt file here)</span></h3>
+  <textarea id="textInput" placeholder="Type text here... Use h1 tags to automatically start a new chapter, or drop a text file here."></textarea>
+</div>
+
+<div id="tocContainer" class="toc-card">
+  <div class="toc-title">Table of Contents</div>
+  <ul id="tocList" class="toc-list"></ul>
+</div>
+
+<div id="outputDisplay"></div>
+
+<button id="backToTop" class="back-to-top" title="Back to top &amp; collapse all" aria-label="Back to top and collapse all sections">&uarr;</button>
+<button id="toggleVersesSummary" class="verses-toggle-circle active" title="Show/hide today's verses" aria-label="Show or hide today's verses list">V</button>
+<button id="toggleCalendarPopup" class="verses-toggle-circle calendar-toggle-circle" title="Show/hide calendar" aria-label="Show or hide calendar">📅</button>
+
+<script>
+  const textInput = document.getElementById('textInput');
+  const outputDisplay = document.getElementById('outputDisplay');
+  const toggleInput = document.getElementById('toggleInput');
+  const toggleLeft = document.getElementById('toggleLeft');
+  const inputContainer = document.getElementById('inputContainer');
+  const tocContainer = document.getElementById('tocContainer');
+  const tocList = document.getElementById('tocList');
+  const backToTop = document.getElementById('backToTop');
+
+  // Original text column is hidden by default (matches toggleLeft starting unchecked above)
+  document.body.classList.add('hide-left');
+
+  backToTop.addEventListener('click', function() {
+      document.querySelectorAll('#outputDisplay details[open]').forEach(d => d.open = false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  window.addEventListener('scroll', function() {
+      backToTop.classList.toggle('visible', window.scrollY > 300);
+  });
+
+  // --- Today's Verses summary panel ---
+  // localStorage throws inside some sandboxed preview contexts; degrade gracefully there.
+  function safeGetStorage(key) {
+      try { return localStorage.getItem(key); } catch (err) { return null; }
+  }
+  function safeSetStorage(key, value) {
+      try { localStorage.setItem(key, value); } catch (err) { /* ignore in sandboxed contexts */ }
+  }
+
+  const versesSummaryBox = document.getElementById('versesSummaryBox');
+  const versesSummaryList = document.getElementById('versesSummaryList');
+  const toggleVersesSummary = document.getElementById('toggleVersesSummary');
+
+  // Must match calendar.html's column order (index 0 = Monday, etc.)
+  const calendarDayLetters = ['M', 'Tu', 'W', 'Th', 'F', 'Sa', 'Su'];
+  // Maps calendar.html's column letters to verse.html's day-of-week h1 titles
+  const dayLetterToH1Title = {
+      'M': 'Mon', 'Tu': 'Tues', 'W': 'Wed', 'Th': 'Thurs', 'F': 'Fri', 'Sa': 'Sat', 'Su': 'Sun'
+  };
+
+  // Parses verse.html's raw markup (read from their shared localStorage key) into
+  // { h1Title: [{ raw, text }, ...] }, mirroring how verse.html itself groups h1/h2 lines.
+  function parseVerseGroups(markup) {
+      const groups = {};
+      let currentTitle = null;
+      markup.split('\n').forEach(line => {
+          const trimmed = line.trim();
+          if (!trimmed) return;
+          const h1Match = trimmed.match(/^<h1>(.*?)<\/h1>$/i);
+          if (h1Match) {
+              currentTitle = h1Match[1].trim();
+              if (!groups[currentTitle]) groups[currentTitle] = [];
+              return;
+          }
+          const h2Match = trimmed.match(/^<h2>(.*?)<\/h2>$/i);
+          if (h2Match && currentTitle) {
+              groups[currentTitle].push({ raw: trimmed, text: h2Match[1].trim() });
+          }
+      });
+      return groups;
+  }
+
+  // Checked state for this panel is now stored separately from verse.html, keyed by each
+  // item's raw markup text (e.g. "<h2>Luke 2:1-5</h2>"), under its own localStorage key.
+  function loadBibleCheckedSet() {
+      try {
+          const raw = safeGetStorage('bibleVersesChecked');
+          const arr = raw ? JSON.parse(raw) : [];
+          return new Set(Array.isArray(arr) ? arr : []);
+      } catch (err) {
+          return new Set();
+      }
+  }
+  function saveBibleCheckedSet(set) {
+      safeSetStorage('bibleVersesChecked', JSON.stringify(Array.from(set)));
+  }
+
+  // Fallback copy of verse.html's own default markup — used only if 'verseBuilderMarkup'
+  // hasn't been saved to localStorage yet (e.g. verse.html was never opened in this browser).
+  const fallbackVerseMarkup = `
+<h1>Daily</h1>
+  <h2>Luke 2:1-5</h2>
+<h1>Even</h1>
+  <h2>Luke 1:76-80</h2>
+<h1>Odd</h1>
+  <h2>Luke 1:71-75</h2>
+<h1>Mon</h1>
+  <h2>Luke 1:66-70</h2>
+<h1>Tues</h1>
+  <h2>Luke 1:61-65</h2>
+<h1>Wed</h1>
+  <h2>Luke 1:56-60</h2>
+<h1>Thurs</h1>
+  <h2>Luke 1:51-55</h2>
+<h1>Fri</h1>
+  <h2>Luke 1:46-50</h2>
+<h1>Sat</h1>
+  <h2>Luke 1:41-45</h2>
+<h1>Sun</h1>
+  <h2>Luke 1:36-40</h2>
+<h1>1</h1>
+  <h2>Psalms 16:6-11</h2>
+  <h2>Psalms 27:8-14</h2>
+  <h2>Luke 1:6-10</h2>
+<h1>2</h1>
+  <h2>Psalms 24:1-10</h2>
+  <h2>Psalms 29:1-6</h2>
+  <h2>Luke 1:11-15</h2>
+<h1>3</h1>
+  <h2>Psalms 16:1-5</h2>
+  <h2>Psalms 29:7-11</h2>
+  <h2>Luke 1:16-20</h2>
+<h1>4</h1>
+  <h2>Psalms 13:1-6</h2>
+  <h2>Psalms 34:1-6</h2>
+  <h2>Luke 1:21-25</h2>
+<h1>5</h1>
+  <h2>Psalms 8:1-9</h2>
+  <h2>Psalms 34:7-11</h2>
+  <h2>Luke 1:26-30</h2>
+<h1>6</h1>
+  <h2>Psalms 100:1-5</h2>
+  <h2>Psalms 34:12-17</h2>
+  <h2>Luke 1:31-35</h2>
+<h1>7</h1>
+  <h2>Psalms 23:1-6</h2>
+  <h2>Psalms 34:18-22</h2>
+<h1>8</h1>
+  <h2>Psalms 37:1-6</h2>
+  <h2>Psalms 1:1-6</h2>
+<h1>9</h1>
+  <h2>Psalms 27:1-7</h2>
+  <h2>Psalms 37:7-11</h2>
+<h1>0</h1>
+  <h2>Psalms 15:1-5</h2>
+  <h2>Luke 1:1-5</h2>`;
+
+  // Reads verse.html's shared markup; if it hasn't been saved yet in this browser, seeds it
+  // with the fallback so this panel works immediately and verse.html picks up the same data.
+  function getVerseMarkup() {
+      let markup = safeGetStorage('verseBuilderMarkup');
+      if (markup === null) {
+          markup = fallbackVerseMarkup;
+          safeSetStorage('verseBuilderMarkup', markup);
+      }
+      return markup;
+  }
+
+  function renderVersesSummary() {
+      versesSummaryList.innerHTML = '';
+
+      const savedNumbers = (safeGetStorage('checklistNumberInput') || '')
+          .split(',')
+          .map(s => parseInt(s.trim(), 10))
+          .filter(n => n >= 1 && n <= 30);
+
+      if (savedNumbers.length === 0) {
+          versesSummaryList.innerHTML = '<div class="verses-summary-empty">No date checked on the calendar yet.</div>';
+          return;
+      }
+
+      // "Last held" = the highest checked number, matching verse.html's own badge logic
+      const latest = Math.max(...savedNumbers);
+      const dayLetter = calendarDayLetters[(latest - 1) % 7];
+      const dayTitle = dayLetterToH1Title[dayLetter];
+      const parityTitle = (latest % 2 === 0) ? 'Even' : 'Odd';
+      const lastDigitTitle = String(latest % 10);
+
+      const wantedTitles = ['Daily', parityTitle, dayTitle, lastDigitTitle];
+
+      const markup = getVerseMarkup();
+      const groups = parseVerseGroups(markup);
+      const checkedSet = loadBibleCheckedSet();
+
+      let anyRendered = false;
+
+      wantedTitles.forEach(title => {
+          const items = groups[title];
+          if (!items || items.length === 0) return;
+          anyRendered = true;
+
+          const groupDiv = document.createElement('div');
+          groupDiv.className = 'verses-summary-group';
+
+          const groupTitleEl = document.createElement('div');
+          groupTitleEl.className = 'verses-summary-group-title';
+          groupTitleEl.textContent = title;
+          groupDiv.appendChild(groupTitleEl);
+
+          items.forEach(({ raw, text }) => {
+              const itemDiv = document.createElement('div');
+              itemDiv.className = 'verses-summary-item';
+
+              const checkbox = document.createElement('input');
+              checkbox.type = 'checkbox';
+              const isChecked = checkedSet.has(raw);
+              checkbox.checked = isChecked;
+              itemDiv.classList.toggle('done', isChecked);
+
+              // Links into this same page's matching h4 anchor, same slug algorithm verse.html uses
+              const slug = slugify(text) || 'section';
+              const link = document.createElement('a');
+              link.href = `#${slug}`;
+              link.textContent = text;
+              link.addEventListener('click', function(e) {
+                  e.preventDefault();
+                  openAncestorsAndScroll(document.getElementById(slug));
+                  versesSummaryBox.classList.add('hidden-box');
+                  toggleVersesSummary.classList.remove('active');
+              });
+
+              checkbox.addEventListener('change', function() {
+                  const currentSet = loadBibleCheckedSet();
+                  if (checkbox.checked) currentSet.add(raw);
+                  else currentSet.delete(raw);
+                  saveBibleCheckedSet(currentSet);
+                  itemDiv.classList.toggle('done', checkbox.checked);
+              });
+
+              itemDiv.appendChild(checkbox);
+              itemDiv.appendChild(link);
+              groupDiv.appendChild(itemDiv);
+          });
+
+          versesSummaryList.appendChild(groupDiv);
+      });
+
+      if (!anyRendered) {
+          versesSummaryList.innerHTML = '<div class="verses-summary-empty">No matching verses found for today.</div>';
+      }
+  }
+
+  const uncheckAllVersesBtn = document.getElementById('uncheckAllVersesBtn');
+  uncheckAllVersesBtn.addEventListener('click', function() {
+      document.querySelectorAll('#versesSummaryList input[type="checkbox"]').forEach(function(cb) {
+          cb.checked = false;
+          const itemDiv = cb.closest('.verses-summary-item');
+          if (itemDiv) itemDiv.classList.remove('done');
+      });
+      saveBibleCheckedSet(new Set());
+  });
+
+  toggleVersesSummary.addEventListener('click', function() {
+      const nowHidden = versesSummaryBox.classList.toggle('hidden-box');
+      toggleVersesSummary.classList.toggle('active', !nowHidden);
+  });
+
+  // --- Mini calendar popup (moved in from the old standalone calendar.html page) ---
+  const calendarPopup = document.getElementById('calendarPopup');
+  const toggleCalendarPopup = document.getElementById('toggleCalendarPopup');
+  const calendarTable = document.getElementById('calendarTable');
+
+  function buildCalendarTable() {
+      calendarTable.innerHTML = '';
+
+      const headerRow = document.createElement('tr');
+      calendarDayLetters.forEach(function(d) {
+          const th = document.createElement('th');
+          th.textContent = d;
+          headerRow.appendChild(th);
+      });
+      calendarTable.appendChild(headerRow);
+
+      // Numbers 1-30, 7 per row, final row stops after column 2 (matches the old calendar.html)
+      let num = 1;
+      for (let row = 0; row < 5; row++) {
+          const tr = document.createElement('tr');
+          for (let col = 0; col < 7; col++) {
+              const td = document.createElement('td');
+              if (num <= 30) {
+                  if (num % 3 === 0) td.classList.add('multiple-of-3');
+                  const cellDiv = document.createElement('div');
+                  cellDiv.className = 'calendar-mini-cell';
+                  const checkbox = document.createElement('input');
+                  checkbox.type = 'checkbox';
+                  checkbox.id = 'calendar-checkbox-' + num;
+                  checkbox.dataset.number = num;
+                  const span = document.createElement('span');
+                  span.textContent = num;
+                  cellDiv.appendChild(checkbox);
+                  cellDiv.appendChild(span);
+                  td.appendChild(cellDiv);
+                  num++;
+              } else {
+                  td.classList.add('empty');
+              }
+              tr.appendChild(td);
+          }
+          calendarTable.appendChild(tr);
+      }
+  }
+
+  function getCalendarCheckedNumbers() {
+      return Array.from(calendarTable.querySelectorAll('input[type="checkbox"]:checked'))
+          .map(function(cb) { return parseInt(cb.dataset.number, 10); })
+          .sort(function(a, b) { return a - b; });
+  }
+
+  function saveCalendarSelection() {
+      safeSetStorage('checklistNumberInput', getCalendarCheckedNumbers().join(', '));
+  }
+
+  function restoreCalendarSelection() {
+      const saved = safeGetStorage('checklistNumberInput');
+      if (!saved) return;
+      const wanted = new Set(
+          saved.split(',').map(function(s) { return parseInt(s.trim(), 10); }).filter(function(n) { return n >= 1 && n <= 30; })
+      );
+      wanted.forEach(function(n) {
+          const cb = document.getElementById('calendar-checkbox-' + n);
+          if (cb) cb.checked = true;
+      });
+  }
+
+  buildCalendarTable();
+  restoreCalendarSelection();
+
+  // --- "New verse today!" toast for multiple-of-3 dates ---
+  const calendarToast = document.getElementById('calendarToast');
+  let calendarToastTimeout = null;
+  function showCalendarToast(message) {
+      calendarToast.textContent = message;
+      calendarToast.classList.add('visible');
+      if (calendarToastTimeout) clearTimeout(calendarToastTimeout);
+      calendarToastTimeout = setTimeout(function() {
+          calendarToast.classList.remove('visible');
+      }, 2200);
+  }
+
+  // Checking/unchecking a date immediately updates Today's Verses — a same-tab localStorage
+  // write doesn't fire the 'storage' event below, so refresh directly here instead.
+  calendarTable.addEventListener('change', function(e) {
+      if (e.target && e.target.type === 'checkbox') {
+          const td = e.target.closest('td');
+          if (e.target.checked && td && td.classList.contains('multiple-of-3')) {
+              showCalendarToast('New verse today!');
+          }
+          saveCalendarSelection();
+          renderVersesSummary();
+      }
+  });
+
+  toggleCalendarPopup.addEventListener('click', function() {
+      const nowHidden = calendarPopup.classList.toggle('hidden-box');
+      toggleCalendarPopup.classList.toggle('active', !nowHidden);
+  });
+
+  // Keep the verses panel live if verse.html (or another tab of this page) changes shared storage
+  window.addEventListener('storage', function(e) {
+      if (e.key === 'checklistNumberInput' || e.key === 'verseBuilderMarkup' || e.key === 'bibleVersesChecked') {
+          renderVersesSummary();
+      }
+  });
+
+  renderVersesSummary();
+
+  // Shared by TOC clicks AND incoming links from other pages (e.g. verse.html linking to
+  // an #anchor here): opens every collapsed ancestor <details> (the h1 chapter, and the h2
+  // section itself if it was individually collapsed), then scrolls the target into view.
+  function openAncestorsAndScroll(target) {
+      if (!target) return;
+
+      if (target.tagName === 'DETAILS') target.open = true;
+      let ancestor = target.parentElement;
+      while (ancestor) {
+          if (ancestor.tagName === 'DETAILS') ancestor.open = true;
+          ancestor = ancestor.parentElement;
+      }
+
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  tocList.addEventListener('click', function(e) {
+      const link = e.target.closest('.toc-link');
+      if (!link) return;
+      e.preventDefault();
+
+      // If this entry has a nested list (h1 -> its h2s, h2 -> its h4s), it's a pure
+      // expand/collapse control — reveal or hide the list and stop there, no navigation.
+      const item = link.closest('.toc-item');
+      const children = item ? item.querySelector(':scope > .toc-children') : null;
+      if (children) {
+          const expanding = !children.classList.contains('expanded');
+          children.classList.toggle('expanded', expanding);
+          const caret = link.querySelector('.toc-caret');
+          if (caret) caret.classList.toggle('rotated', expanding);
+          return;
+      }
+
+      // Leaf entries (h4) are the only ones that still jump down to their section
+      const targetId = link.getAttribute('href').slice(1);
+      openAncestorsAndScroll(document.getElementById(targetId));
+  });
+
+  // If another page (e.g. verse.html) links here with #some-slug, open and scroll to it
+  // once the content has been built. Also handles same-page hash changes.
+  function handleHashNavigation() {
+      if (!location.hash) return;
+      let id;
+      try { id = decodeURIComponent(location.hash.slice(1)); } catch (err) { id = location.hash.slice(1); }
+      openAncestorsAndScroll(document.getElementById(id));
+  }
+  window.addEventListener('hashchange', handleHashNavigation);
+
+  // Turns heading text into a stable, URL-safe slug (e.g. "Chapter 1: Intro" -> "chapter-1-intro"),
+  // so other pages can link here by heading text without knowing the document's internal structure.
+  function slugify(text) {
+      return text
+          .toLowerCase()
+          .trim()
+          .replace(/[^\w\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-');
+  }
+
+  function updateView() {
+      const text = textInput.value;
+      outputDisplay.innerHTML = '';
+      tocList.innerHTML = ''; // Clear previous table of contents items
+
+      const lines = text.split('\n');
+      let currentH1Body = null; // wrapper <div> inside the open h1 chapter that holds its nested h2 sections
+      let currentGrid = null;   // grid-container currently receiving text lines (belongs to an h2, or a fallback)
+      let textLineCounter = 0;
+      let chapterIndex = 0;
+      let currentH1TocChildren = null; // <ul> holding this h1's nested h2 TOC entries (starts hidden)
+      let currentH2TocChildren = null; // <ul> holding this h2's nested h4 TOC entries (starts hidden)
+      const slugCounts = {}; // tracks repeats within this render so duplicate heading text still gets unique ids
+
+      function makeGrid() {
+          const grid = document.createElement('div');
+          grid.className = 'grid-container';
+          return grid;
+      }
+
+      // Builds this heading's id from its own text. First occurrence of a given slug gets the
+      // plain slug; repeats get -2, -3, etc. so ids stay unique even with duplicate headings.
+      function makeSlugId(text) {
+          const base = slugify(text) || 'section';
+          if (slugCounts[base] === undefined) {
+              slugCounts[base] = 0;
+              return base;
+          }
+          slugCounts[base]++;
+          return `${base}-${slugCounts[base] + 1}`;
+      }
+
+      lines.forEach((line) => {
+          if (line.trim() === '') return;
+
+          const headerMatch = line.match(/^<(h[1-6])>(.*?)<\/\1>$/i);
+
+          if (headerMatch) {
+              chapterIndex++;
+
+              const rawTitleText = headerMatch[2];
+              const chapterId = makeSlugId(rawTitleText);
+              const headingLevel = headerMatch[1].toLowerCase(); // e.g. "h1", "h2"
+
+              if (headingLevel === 'h1' || headingLevel === 'h2') textLineCounter = 0; // sub-headers (h3+) don't interrupt the numbering
+
+              // 1. Append Dynamic Link to Table of Contents, nested so it stays collapsed until
+              // its parent is clicked: h2 entries live inside their parent h1's child list, and
+              // h4 entries live inside their parent h2's child list. Both child lists start
+              // hidden (see .toc-children CSS) — clicking the h1 reveals its h2s, clicking the
+              // h2 reveals its h4s. h3 is deliberately left out entirely (it's a visible
+              // in-body marker only, not a TOC entry).
+              if (headingLevel === 'h1') {
+                  const li = document.createElement('li');
+                  li.className = 'toc-item';
+                  const a = document.createElement('a');
+                  a.className = 'toc-link level-h1';
+                  a.innerHTML = `<span>${rawTitleText}</span><span class="toc-caret">▸</span>`;
+                  const childUl = document.createElement('ul');
+                  childUl.className = 'toc-children';
+                  li.appendChild(a);
+                  li.appendChild(childUl);
+                  tocList.appendChild(li);
+
+                  currentH1TocChildren = childUl;
+                  currentH2TocChildren = null;
+              } else if (headingLevel === 'h2') {
+                  const li = document.createElement('li');
+                  li.className = 'toc-item';
+                  const a = document.createElement('a');
+                  a.className = 'toc-link level-h2';
+                  a.innerHTML = `<span>${rawTitleText}</span><span class="toc-caret">▸</span>`;
+                  const childUl = document.createElement('ul');
+                  childUl.className = 'toc-children';
+                  li.appendChild(a);
+                  li.appendChild(childUl);
+                  (currentH1TocChildren || tocList).appendChild(li);
+
+                  currentH2TocChildren = childUl;
+              } else if (headingLevel === 'h4') {
+                  const li = document.createElement('li');
+                  li.className = 'toc-item';
+                  const a = document.createElement('a');
+                  a.href = `#${chapterId}`;
+                  a.className = 'toc-link level-h3'; // borrows the old h3 TOC styling
+                  a.innerText = rawTitleText;
+                  li.appendChild(a);
+                  (currentH2TocChildren || currentH1TocChildren || tocList).appendChild(li);
+              }
+
+              const title = document.createElement('summary');
+              title.className = `user-header level-${headingLevel}`;
+              title.innerHTML = `<span>${rawTitleText}</span><span class="toggle-icon">▼</span>`;
+
+              if (headingLevel === 'h1') {
+                  // h1 is a pure container: it holds no text of its own, only nested h2 sections
+                  const chapterCard = document.createElement('details');
+                  chapterCard.className = 'chapter-card';
+                  chapterCard.id = chapterId;
+                  // h1 chapters are collapsed by default; opened via the toggle or a TOC click
+
+                  currentH1Body = document.createElement('div');
+                  currentH1Body.className = 'chapter-body';
+
+                  chapterCard.appendChild(title);
+                  chapterCard.appendChild(currentH1Body);
+                  outputDisplay.appendChild(chapterCard);
+
+                  currentGrid = null; // no grid yet — created lazily if text appears before the next h2
+              } else if (headingLevel === 'h2') {
+                  // h2 nests inside the current h1's body, and owns its own collapsible text grid
+                  const sectionCard = document.createElement('details');
+                  sectionCard.className = 'chapter-card nested';
+                  sectionCard.id = chapterId;
+                  // h2 sections are collapsed by default (like their parent h1); opened via the toggle or a TOC click
+
+                  currentGrid = makeGrid();
+                  sectionCard.appendChild(title);
+                  sectionCard.appendChild(currentGrid);
+
+                  (currentH1Body || outputDisplay).appendChild(sectionCard);
+              } else if (headingLevel === 'h4') {
+                  // h4 is a pure TOC anchor: it's linked to from the table of contents, but
+                  // renders no visible heading in the section body — just an invisible,
+                  // zero-height scroll target sitting in the current grid.
+                  if (!currentGrid) {
+                      currentGrid = makeGrid();
+                      (currentH1Body || outputDisplay).appendChild(currentGrid);
+                  }
+
+                  const anchor = document.createElement('div');
+                  anchor.id = chapterId;
+                  anchor.className = 'sub-header-anchor';
+                  anchor.setAttribute('aria-hidden', 'true');
+                  currentGrid.appendChild(anchor);
+              } else {
+                  // h3 (and h5/h6): a plain, non-collapsible sub-heading that spans both
+                  // columns, inserted right into the currently active grid — it does not open
+                  // its own collapsible card, does not interrupt the surrounding text's
+                  // grid/highlighting, and (unlike h4) is intentionally left out of the TOC.
+                  if (!currentGrid) {
+                      currentGrid = makeGrid();
+                      (currentH1Body || outputDisplay).appendChild(currentGrid);
+                  }
+
+                  const subHeader = document.createElement('div');
+                  subHeader.id = chapterId;
+                  subHeader.className = 'sub-header';
+                  subHeader.textContent = rawTitleText;
+                  currentGrid.appendChild(subHeader);
+              }
+          } else {
+              if (!currentGrid) {
+                  // Text appearing before any h2 (or before any heading at all) needs somewhere to live
+                  currentGrid = makeGrid();
+                  (currentH1Body || outputDisplay).appendChild(currentGrid);
+              }
+
+              textLineCounter++;
+              const processedText = line.replace(/\b\w+(?:['’]\w+)*\b/g, (word) => /^\d+$/.test(word) ? word : word[0]);
+
+              const leftEl = document.createElement('div');
+              leftEl.className = 'text-segment col-left';
+              leftEl.innerText = line;
+
+              const rightEl = document.createElement('div');
+              rightEl.className = 'text-segment col-right';
+              rightEl.innerText = processedText;
+
+              if (textLineCounter % 5 === 0) {
+                  leftEl.classList.add('highlight-blue');
+                  rightEl.classList.add('highlight-blue');
+              }
+
+              currentGrid.appendChild(leftEl);
+              currentGrid.appendChild(rightEl);
+          }
+      });
+
+      // Hide TOC block entirely if no h1-h6 headings were detected in the text
+      tocContainer.style.display = chapterIndex > 0 ? 'block' : 'none';
+  }
+
+  // Drag and Drop File Handlers
+  inputContainer.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      inputContainer.classList.add('dragover');
+  });
+
+  inputContainer.addEventListener('dragleave', function() {
+      inputContainer.classList.remove('dragover');
+  });
+
+  inputContainer.addEventListener('drop', function(e) {
+      e.preventDefault();
+      inputContainer.classList.remove('dragover');
+     
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+          const file = files[0];
+         
+          // Only read standard text documents
+          if (file.type === "text/plain" || file.name.endsWith('.txt')) {
+              const reader = new FileReader();
+              reader.onload = function(event) {
+                  textInput.value = event.target.result;
+                  updateView();
+              };
+              reader.readAsText(file);
+          } else {
+              alert("Please drop a standard .txt text file.");
+          }
+      }
+  });
+
+  toggleInput.addEventListener('change', function() {
+      inputContainer.classList.toggle('hide-box', !this.checked);
+      document.getElementById('inputLabel').textContent = this.checked ? "Hide Input Box" : "Show Input Box";
+  });
+
+  toggleLeft.addEventListener('change', function() {
+      document.body.classList.toggle('hide-left', !this.checked);
+      document.getElementById('leftLabel').textContent = this.checked ? "Hide Original Text" : "Show Original Text";
+  });
+
+  textInput.addEventListener('input', updateView);
+
+  // The text that loads when the page first opens is now pulled from biblecontents.txt,
+  // a plain text file that must sit in the same directory as this HTML file. Edit that
+  // file (not this script) to change the book's contents.
+  const fallbackText = `<h1> Psalms </h1>
+`;
+
+  fetch('biblecontents.txt')
+      .then(response => {
+          if (!response.ok) throw new Error('biblecontents.txt not found');
+          return response.text();
+      })
+      .then(text => {
+          textInput.value = text;
+          updateView();
+          // Wait a frame so layout has settled before measuring scroll position
+          requestAnimationFrame(handleHashNavigation);
+      })
+      .catch(err => {
+          // biblecontents.txt is missing (or failed to load) — try the family variant
+          // before falling back to the built-in placeholder text.
+          console.warn('Could not load biblecontents.txt, trying biblecontentsfamily.txt.', err);
+          fetch('biblecontentsfamily.txt')
+              .then(response => {
+                  if (!response.ok) throw new Error('biblecontentsfamily.txt not found');
+                  return response.text();
+              })
+              .then(text => {
+                  textInput.value = text;
+                  updateView();
+                  requestAnimationFrame(handleHashNavigation);
+              })
+              .catch(err2 => {
+                  console.warn('Could not load biblecontentsfamily.txt, using fallback text.', err2);
+                  textInput.value = fallbackText;
+                  updateView();
+                  requestAnimationFrame(handleHashNavigation);
+              });
+      });
+</script>
+
+</body>
+</html>

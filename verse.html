@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verse picker</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    margin: 0;
+    padding: 30px 20px 60px 20px;
+    background-color: #f4f5f7;
+    color: #172b4d;
+  }
+
+  .back-link-row {
+    max-width: 700px;
+    margin: 0 auto 10px auto;
+  }
+  .back-link {
+    color: #5e6c84;
+    text-decoration: none;
+    font-weight: normal;
+    font-size: 0.85rem;
+  }
+  .back-link:hover { color: #2563eb; text-decoration: underline; }
+
+  .header-container {
+    max-width: 700px;
+    margin: 0 auto 15px auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .page-title { font-size: 1.6rem; font-weight: 700; margin: 0; }
+
+  .header-buttons { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+ 
+  .toggle-ui-btn {
+    padding: 4px 7px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    background: transparent;
+    color: #8993a4;
+    border: 1px solid #dcdfe4;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .toggle-ui-btn:hover { background: #eef0f3; color: #5e6c84; }
+  .toggle-ui-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .toggle-ui-btn:disabled:hover { background: transparent; color: #8993a4; }
+
+  /* Live Markup Textarea Workspace */
+  .workspace-panel {
+    max-width: 700px;
+    margin: 0 auto 24px auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .workspace-panel label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #5e6c84;
+  }
+  .workspace-panel textarea {
+    width: 100%;
+    height: 140px;
+    padding: 12px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.95rem;
+    border: 1px solid #dcdfe4;
+    border-radius: 8px;
+    resize: vertical;
+    background: #fff;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+  }
+  .workspace-panel textarea:focus {
+    outline: 2px solid #2563eb;
+    outline-offset: -1px;
+  }
+  .hidden-controls { display: none !important; }
+
+  #groupsContainer { max-width: 700px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+  /* Layout/Card Styling */
+  .group {
+    background: #fff;
+    border: 1px solid #e4e6ea;
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
+  .group-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border-bottom: 1px solid #eee;
+  }
+  .drag-handle { cursor: grab; color: #a5adba; font-size: 1rem; user-select: none; line-height: 1; letter-spacing: -2px; }
+  .drag-handle:active { cursor: grabbing; }
+
+  .group-title {
+    flex: 1;
+    padding: 2px 4px;
+    border-radius: 4px;
+  }
+  .group-title h1, .group-title h2, .group-title h3,
+  .item-text h1, .item-text h2, .item-text h3 {
+    margin: 0;
+    display: inline-block;
+  }
+  .group-title h1 {
+    font-size: 1em;
+  }
+  .item-text h2 {
+    font-size: 1em;
+    font-weight: 300;
+  }
+
+  /* Plain clickable link rendering for h2 verse references (linking into bible.html) */
+  .verse-link {
+    color: #2563eb;
+    text-decoration: none;
+    font-size: 1em;
+    font-weight: 300;
+  }
+  .verse-link:hover { text-decoration: underline; }
+
+  .delete-btn {
+    background: none;
+    border: none;
+    color: #a5adba;
+    font-size: 1rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 4px 6px;
+    border-radius: 4px;
+  }
+  .delete-btn:hover { background: #ffebe6; color: #de350b; }
+
+  .items-list { padding: 12px; min-height: 60px; display: flex; flex-direction: column; gap: 6px; }
+  .items-list.drop-target { background: #eef2ff; border-radius: 6px; }
+
+  .item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fafbfc;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+  .item.dragging { opacity: 0.4; }
+
+  .item-text {
+    flex: 1;
+    padding: 2px 4px;
+    border-radius: 4px;
+    word-break: break-word;
+  }
+
+  /* Floating badge: shows the highest checked day from calendar.html (read from shared
+     localStorage) plus its day-of-week column letter, e.g. "12, F" */
+  .latest-date-badge {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 1000;
+    background: #fff;
+    border: 1px solid #e4e6ea;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #172b4d;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  }
+  .latest-date-badge.waiting {
+    font-weight: normal;
+    font-style: italic;
+    color: #a5adba;
+  }
+</style>
+<script>
+  // Registers the service worker so this page (and its linked pages/assets) work offline
+  // once visited at least once with a connection.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch((err) => {
+        console.warn('Service worker registration failed:', err);
+      });
+    });
+  }
+</script>
+</head>
+<body>
+
+<div id="latestDateBadge" class="latest-date-badge"></div>
+
+<div class="back-link-row">
+  <a href="index.html" class="back-link">&larr; Back to Home</a>
+</div>
+
+<div class="header-container">
+  <div class="page-title">Verse picker</div>
+  <div class="header-buttons">
+    <button id="previousDayBtn" class="toggle-ui-btn" disabled>Previous day</button>
+    <button id="nextDayBtn" class="toggle-ui-btn">Next day</button>
+    <button id="toggleUiBtn" class="toggle-ui-btn">Hide input box</button>
+  </div>
+</div>
+
+<div class="workspace-panel" id="workspacePanel">
+  <label for="markupInput">Input box</label>
+  <textarea id="markupInput" placeholder="<h1> Groceries </h1>&#10;<h2> apple </h2>&#10;<h1> Work </h1>&#10;<h2> computer </h2>"></textarea>
+</div>
+
+<div id="groupsContainer"></div>
+
+<script>
+  const groupsContainer = document.getElementById('groupsContainer');
+  const markupInput = document.getElementById('markupInput');
+  const toggleUiBtn = document.getElementById('toggleUiBtn');
+  const workspacePanel = document.getElementById('workspacePanel');
+
+  let draggingEl = null;
+  let isUpdatingFromTextarea = false; // Flag to prevent infinite sync loops
+  let isAnimating = false; // Blocks overlapping Next/Previous day clicks while items are moving
+
+  // --- Toggle Controls View ---
+  toggleUiBtn.addEventListener('click', () => {
+    const isHidden = workspacePanel.classList.toggle('hidden-controls');
+    toggleUiBtn.textContent = isHidden ? "Show Markup Editor" : "Hide Markup Editor";
+  });
+
+  // localStorage throws (rather than just failing quietly) inside a sandboxed preview iframe
+  // lacking 'allow-same-origin'. Wrap access so the app degrades to "no persistence" there
+  // instead of crashing the whole script before anything renders.
+  function safeGetStorage(key) {
+    try { return localStorage.getItem(key); } catch (err) { return null; }
+  }
+  function safeSetStorage(key, value) {
+    try { localStorage.setItem(key, value); } catch (err) { /* ignore in sandboxed contexts */ }
+  }
+
+  // Turns verse reference text into the same slug bible.html generates for its h4 anchors,
+  // so links here land on the right spot (e.g. "Luke 2:1-5" -> "luke-215").
+  function slugify(text) {
+      return text
+          .toLowerCase()
+          .trim()
+          .replace(/[^\w\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-');
+  }
+
+  // --- 1. DIRECTION: UI Elements -> Markup String ---
+  function syncUItoTextarea() {
+    if (isUpdatingFromTextarea) return; // Stop if the update originated from typing
+   
+    let markupLines = [];
+    const groups = groupsContainer.querySelectorAll('.group');
+   
+    groups.forEach(group => {
+      const titleRaw = group.querySelector('.group-title').dataset.raw || '';
+      if (titleRaw) markupLines.push(titleRaw);
+     
+      const items = group.querySelectorAll('.item-text');
+      items.forEach(item => {
+        const itemRaw = item.dataset.raw || '';
+        if (itemRaw) markupLines.push(`  ${itemRaw}`); // indented for readability
+      });
+    });
+
+    markupInput.value = markupLines.join('\n');
+    safeSetStorage('verseBuilderMarkup', markupInput.value);
+  }
+
+  // --- 2. DIRECTION: Markup String -> UI Elements ---
+  function syncTextareaToUI() {
+    isUpdatingFromTextarea = true;
+
+    // Clear current UI to rebuild from clean state text map
+    groupsContainer.innerHTML = '';
+   
+    const lines = markupInput.value.split('\n');
+    let currentItemsList = null;
+    let currentGroup = null;
+
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+
+      // Logic check: If line contains <h1>, make a Section card container
+      if (trimmed.toLowerCase().startsWith('<h1')) {
+        currentGroup = createGroup(trimmed);
+        groupsContainer.appendChild(currentGroup);
+        currentItemsList = currentGroup.querySelector('.items-list');
+      } else {
+        // Otherwise treat it as a task line. If no <h1> section header exists yet, build a dummy one
+        if (!currentItemsList) {
+          currentGroup = createGroup('<h1>General Tasks</h1>');
+          groupsContainer.appendChild(currentGroup);
+          currentItemsList = currentGroup.querySelector('.items-list');
+        }
+        currentItemsList.appendChild(createItem(trimmed));
+      }
+    });
+
+    isUpdatingFromTextarea = false;
+  }
+
+  // Monitor raw textarea keys — sync UI, then persist to local storage
+  markupInput.addEventListener('input', () => {
+    syncTextareaToUI();
+    safeSetStorage('verseBuilderMarkup', markupInput.value);
+  });
+
+  // --- Drag-and-Drop Core Blueprint ---
+  function getDragAfterElement(container, y, selector) {
+    const els = [...container.querySelectorAll(`:scope > ${selector}:not(.dragging)`)];
+    return els.reduce((closest, child) => {
+      const box = child.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > closest.offset) {
+        return { offset, element: child };
+      }
+      return closest;
+    }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
+  }
+
+  function clearDropTargets() {
+    document.querySelectorAll('.drop-target').forEach(el => el.classList.remove('drop-target'));
+  }
+
+  // If the raw line is a plain h2 verse reference (e.g. "<h2>Luke 2:1-5</h2>"), render it as a
+  // clickable plain link into bible.html's matching h4 anchor instead of a literal heading.
+  function renderItemContent(htmlContent) {
+    const h2Match = htmlContent.match(/^<h2>(.*?)<\/h2>$/i);
+    if (h2Match) {
+      const verseText = h2Match[1];
+      const slug = slugify(verseText) || 'section';
+      return `<a href="bible.html#${slug}" class="verse-link">${verseText}</a>`;
+    }
+    return htmlContent;
+  }
+
+  function createItem(htmlContent) {
+    const item = document.createElement('div');
+    item.className = 'item';
+    item.draggable = true;
+    item.dataset.type = 'item';
+
+    item.innerHTML = `
+      <span class="drag-handle">⋮⋮</span>
+      <span class="item-text"></span>
+      <button class="delete-btn" title="Delete item">✕</button>
+    `;
+   
+    const itemText = item.querySelector('.item-text');
+    itemText.dataset.raw = htmlContent;
+    itemText.innerHTML = renderItemContent(htmlContent);
+
+    item.querySelector('.delete-btn').addEventListener('click', () => {
+      item.remove();
+      syncUItoTextarea();
+    });
+
+    item.addEventListener('dragstart', (e) => {
+      e.stopPropagation();
+      draggingEl = item;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', '');
+    });
+
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      draggingEl = null;
+      clearDropTargets();
+      syncUItoTextarea(); // Sync layout immediately to text box on item drop
+    });
+
+    return item;
+  }
+
+  function createGroup(htmlContent) {
+    const group = document.createElement('div');
+    group.className = 'group';
+    group.dataset.type = 'group';
+
+    group.innerHTML = `
+      <div class="group-header">
+        <span class="group-title"></span>
+      </div>
+      <div class="items-list"></div>
+    `;
+   
+    const groupTitle = group.querySelector('.group-title');
+    groupTitle.dataset.raw = htmlContent;
+    groupTitle.innerHTML = htmlContent;
+
+    const itemsList = group.querySelector('.items-list');
+
+    itemsList.addEventListener('dragover', (e) => {
+      if (!draggingEl || draggingEl.dataset.type !== 'item') return;
+      e.preventDefault();
+      e.stopPropagation();
+      clearDropTargets();
+      itemsList.classList.add('drop-target');
+     
+      const afterElement = getDragAfterElement(itemsList, e.clientY, '.item');
+      if (afterElement == null) {
+        itemsList.appendChild(draggingEl);
+      } else {
+        itemsList.insertBefore(draggingEl, afterElement);
+      }
+    });
+
+    itemsList.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      clearDropTargets();
+    });
+
+    return group;
+  }
+
+  // --- "Next day" / "Previous day" cycling ---
+  // Moves every h2 verse item in a group one step along a fixed chain:
+  //   Daily -> Even -> Odd -> Mon -> Tue -> Wed -> Thu -> Fri -> Sat -> Sun -> (a digit 1-9,0)
+  // "Previous day" is implemented as a true undo (restores the exact markup from before the
+  // last "Next day" click) rather than a separate reverse algorithm, since which digit
+  // category Sun's items came from can't be reconstructed algorithmically once it's happened.
+  const nextDayBtn = document.getElementById('nextDayBtn');
+  const previousDayBtn = document.getElementById('previousDayBtn');
+
+  const DAY_CHAIN = ['daily', 'even', 'odd', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+  const DAY_CHAIN_LABELS = {
+    daily: 'Daily', even: 'Even', odd: 'Odd', mon: 'Mon', tue: 'Tue',
+    wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun'
+  };
+  const DIGIT_ORDER = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
+
+  function getAllGroupEls() {
+    return Array.from(groupsContainer.querySelectorAll(':scope > .group'));
+  }
+
+  function groupTitleText(group) {
+    const raw = group.querySelector('.group-title').dataset.raw || '';
+    return raw.replace(/<[^>]+>/g, '').trim().toLowerCase();
+  }
+
+  // 'daily'/'even'/'odd' must match exactly; weekdays match by prefix so "Monday"/"Tues" etc.
+  // are recognized too.
+  function findChainGroup(key) {
+    const groups = getAllGroupEls();
+    if (key === 'daily' || key === 'even' || key === 'odd') {
+      return groups.find(g => groupTitleText(g) === key) || null;
+    }
+    return groups.find(g => groupTitleText(g).startsWith(key)) || null;
+  }
+
+  function findDigitGroup(digit) {
+    return getAllGroupEls().find(g => groupTitleText(g) === digit) || null;
+  }
+
+  // Finds an h1 group by an exact (non-day-chain) title match, e.g. the "New" category.
+  function findNamedGroup(name) {
+    return getAllGroupEls().find(g => groupTitleText(g) === name) || null;
+  }
+
+  function ensureGroupEl(existingGroup, labelText) {
+    if (existingGroup) return existingGroup;
+    const newGroup = createGroup(`<h1>${labelText}</h1>`);
+    groupsContainer.appendChild(newGroup);
+    return newGroup;
+  }
+
+  // Among h1 categories 1-9 and 0, finds the one with the fewest h2 items. Ties break toward
+  // the smaller number, with 0 treated as coming after 9 (matches the 1,2,...,9,0 ordering).
+  // A digit with no matching group at all counts as having 0 items.
+  function leastPopulatedDigit() {
+    let best = DIGIT_ORDER[0];
+    let bestCount = Infinity;
+    DIGIT_ORDER.forEach(digit => {
+      const group = findDigitGroup(digit);
+      const count = group ? group.querySelector('.items-list').children.length : 0;
+      if (count < bestCount) {
+        bestCount = count;
+        best = digit;
+      }
+    });
+    return best;
+  }
+
+  // --- FLIP animation: makes items glide to their new spot over 1s instead of ---
+  // --- instantly teleporting there. Two capture strategies are used because ---
+  // --- nextDay() moves the *same* DOM elements around (so element refs work as ---
+  // --- keys), while previousDay() rebuilds the DOM from scratch via ---
+  // --- syncTextareaToUI() (so elements are matched by their raw text + the ---
+  // --- order they appear in, since refs don't survive a rebuild).
+  function prefersReducedMotion() {
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  // Plays the actual glide animation for a list of { item, dx, dy } deltas, where
+  // dx/dy is how far the item's position moved (old position minus new position).
+  function playFlip(moving) {
+    if (moving.length === 0) return;
+
+    isAnimating = true;
+    const prevBtnWasDisabled = previousDayBtn.disabled;
+    nextDayBtn.disabled = true;
+    previousDayBtn.disabled = true;
+
+    moving.forEach(({ item, dx, dy }) => {
+      item.style.transition = 'none';
+      item.style.transform = `translate(${dx}px, ${dy}px)`;
+      item.style.position = 'relative';
+      item.style.zIndex = '10';
+    });
+
+    // Force a reflow so the "start" transform above is actually applied before we
+    // switch on the transition and animate back to translate(0, 0).
+    void groupsContainer.offsetHeight;
+
+    requestAnimationFrame(() => {
+      moving.forEach(({ item }) => {
+        item.style.transition = 'transform 1s ease';
+        item.style.transform = '';
+      });
+    });
+
+    setTimeout(() => {
+      moving.forEach(({ item }) => {
+        item.style.transition = '';
+        item.style.transform = '';
+        item.style.position = '';
+        item.style.zIndex = '';
+      });
+      isAnimating = false;
+      nextDayBtn.disabled = false;
+      previousDayBtn.disabled = prevBtnWasDisabled;
+    }, 1050);
+  }
+
+  // Used by nextDay(): element references stay the same, so just diff each
+  // item's rect before vs. after the move.
+  function animateFlipByRef(itemEls, firstRects) {
+    if (prefersReducedMotion()) return;
+    const moving = [];
+    itemEls.forEach(item => {
+      const first = firstRects.get(item);
+      if (!first) return;
+      const last = item.getBoundingClientRect();
+      const dx = first.left - last.left;
+      const dy = first.top - last.top;
+      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+        moving.push({ item, dx, dy });
+      }
+    });
+    playFlip(moving);
+  }
+
+  // Used by previousDay(): the DOM gets torn down and rebuilt, so match old
+  // and new items by their raw text plus an occurrence count (to disambiguate
+  // duplicate lines), in document order.
+  function captureKeyedRects() {
+    const counts = new Map();
+    const rects = new Map();
+    groupsContainer.querySelectorAll('.item').forEach(item => {
+      const raw = item.querySelector('.item-text').dataset.raw || '';
+      const n = counts.get(raw) || 0;
+      counts.set(raw, n + 1);
+      rects.set(raw + '\u241F' + n, item.getBoundingClientRect());
+    });
+    return rects;
+  }
+
+  function animateFlipByKey(oldRects) {
+    if (prefersReducedMotion()) return;
+    const counts = new Map();
+    const moving = [];
+    groupsContainer.querySelectorAll('.item').forEach(item => {
+      const raw = item.querySelector('.item-text').dataset.raw || '';
+      const n = counts.get(raw) || 0;
+      counts.set(raw, n + 1);
+      const first = oldRects.get(raw + '\u241F' + n);
+      if (!first) return;
+      const last = item.getBoundingClientRect();
+      const dx = first.left - last.left;
+      const dy = first.top - last.top;
+      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+        moving.push({ item, dx, dy });
+      }
+    });
+    playFlip(moving);
+  }
+
+  function nextDay() {
+    if (isAnimating) return;
+    pushDayHistory();
+
+    // Snapshot every item's on-screen position before anything moves.
+    const itemEls = Array.from(groupsContainer.querySelectorAll('.item'));
+    const firstRects = new Map();
+    itemEls.forEach(item => firstRects.set(item, item.getBoundingClientRect()));
+
+    // Process from Sun back to Daily so each group's original items are read before
+    // anything new gets moved into it earlier in the same click.
+    for (let i = DAY_CHAIN.length - 1; i >= 0; i--) {
+      const key = DAY_CHAIN[i];
+      const sourceGroup = findChainGroup(key);
+      if (!sourceGroup) continue;
+
+      const sourceItemsList = sourceGroup.querySelector('.items-list');
+      const itemsToMove = Array.from(sourceItemsList.children);
+      if (itemsToMove.length === 0) continue;
+
+      let destGroup;
+      if (key === 'sun') {
+        const digit = leastPopulatedDigit();
+        destGroup = ensureGroupEl(findDigitGroup(digit), digit);
+      } else {
+        const destKey = DAY_CHAIN[i + 1];
+        destGroup = ensureGroupEl(findChainGroup(destKey), DAY_CHAIN_LABELS[destKey]);
+      }
+
+      const destItemsList = destGroup.querySelector('.items-list');
+      itemsToMove.forEach(item => destItemsList.appendChild(item));
+    }
+
+    // Also move the top (first-listed) item from the "New" category into "Daily", if
+    // there is a "New" group with at least one item. Done after the day-chain shift above
+    // so it lands in Daily's freshly-emptied list rather than getting swept along with
+    // Daily's original items into Even.
+    const newGroup = findNamedGroup('new');
+    if (newGroup) {
+      const newItemsList = newGroup.querySelector('.items-list');
+      const topNewItem = newItemsList.firstElementChild;
+      if (topNewItem) {
+        const dailyGroup = ensureGroupEl(findChainGroup('daily'), DAY_CHAIN_LABELS.daily);
+        dailyGroup.querySelector('.items-list').appendChild(topNewItem);
+      }
+    }
+
+    syncUItoTextarea();
+
+    // Elements have already landed in their final spot in the DOM; animate them
+    // gliding there from where they used to be.
+    animateFlipByRef(itemEls, firstRects);
+  }
+
+  // --- Undo history for "Previous day" ---
+  const DAY_HISTORY_KEY = 'verseDayHistory';
+  const MAX_DAY_HISTORY = 60;
+  let dayHistoryStack = [];
+  try {
+    const savedHistory = safeGetStorage(DAY_HISTORY_KEY);
+    if (savedHistory) dayHistoryStack = JSON.parse(savedHistory);
+  } catch (err) {
+    dayHistoryStack = [];
+  }
+
+  function persistDayHistory() {
+    safeSetStorage(DAY_HISTORY_KEY, JSON.stringify(dayHistoryStack));
+  }
+
+  function pushDayHistory() {
+    dayHistoryStack.push(markupInput.value);
+    if (dayHistoryStack.length > MAX_DAY_HISTORY) dayHistoryStack.shift();
+    persistDayHistory();
+    updateDayButtonsState();
+  }
+
+  function previousDay() {
+    if (isAnimating) return;
+    if (dayHistoryStack.length === 0) return;
+    const prevMarkup = dayHistoryStack.pop();
+    persistDayHistory();
+
+    // Snapshot current positions (keyed by text, since syncTextareaToUI rebuilds
+    // all the item elements from scratch rather than moving the existing ones).
+    const oldRects = captureKeyedRects();
+
+    markupInput.value = prevMarkup;
+    syncTextareaToUI();
+    safeSetStorage('verseBuilderMarkup', prevMarkup);
+    updateDayButtonsState();
+
+    animateFlipByKey(oldRects);
+  }
+
+  function updateDayButtonsState() {
+    previousDayBtn.disabled = dayHistoryStack.length === 0;
+  }
+
+  nextDayBtn.addEventListener('click', nextDay);
+  previousDayBtn.addEventListener('click', previousDay);
+  updateDayButtonsState();
+
+  // --- Seed Initial Text State to Bootstrap UI ---
+  // Restore last-saved value from this browser's local storage, if any; otherwise load the
+  // initial seed from versecontents.txt (a plain text file in the same directory as this
+  // HTML file). If that file can't be read, just start empty.
+  const savedMarkup = safeGetStorage('verseBuilderMarkup');
+
+  if (savedMarkup !== null) {
+      markupInput.value = savedMarkup;
+      syncTextareaToUI();
+  } else {
+      fetch('versecontents.txt')
+          .then(response => {
+              if (!response.ok) throw new Error('versecontents.txt not found');
+              return response.text();
+          })
+          .then(text => {
+              markupInput.value = text;
+              // Persist the seed immediately so other pages (e.g. bible.html) reading this
+              // same localStorage key see data right away, even before this textarea is
+              // ever edited.
+              safeSetStorage('verseBuilderMarkup', text);
+              syncTextareaToUI();
+          })
+          .catch(err => {
+              // versecontents.txt is missing (or failed to load) — try the family variant
+              // before giving up and starting empty.
+              console.warn('Could not load versecontents.txt, trying versecontentsfamily.txt.', err);
+              fetch('versecontentsfamily.txt')
+                  .then(response => {
+                      if (!response.ok) throw new Error('versecontentsfamily.txt not found');
+                      return response.text();
+                  })
+                  .then(text => {
+                      markupInput.value = text;
+                      safeSetStorage('verseBuilderMarkup', text);
+                      syncTextareaToUI();
+                  })
+                  .catch(err2 => {
+                      console.warn('Could not load versecontentsfamily.txt, starting empty.', err2);
+                      markupInput.value = '';
+                      safeSetStorage('verseBuilderMarkup', '');
+                      syncTextareaToUI();
+                  });
+          });
+  }
+
+  // --- Floating badge: latest checked day from calendar.html's shared localStorage ---
+  const latestDateBadge = document.getElementById('latestDateBadge');
+  const calendarDays = ['M', 'Tu', 'W', 'Th', 'F', 'Sa', 'Su']; // must match calendar.html's column order
+
+  function updateLatestDateBadge() {
+    const saved = safeGetStorage('checklistNumberInput');
+    const numbers = (saved || '')
+      .split(',')
+      .map(s => parseInt(s.trim(), 10))
+      .filter(n => n >= 1 && n <= 30);
+
+    if (numbers.length === 0) {
+      latestDateBadge.textContent = 'Waiting for data…';
+      latestDateBadge.classList.add('waiting');
+      return;
+    }
+
+    const latest = Math.max(...numbers);
+    const dayLetter = calendarDays[(latest - 1) % 7];
+    latestDateBadge.textContent = `${latest}, ${dayLetter}`;
+    latestDateBadge.classList.remove('waiting');
+  }
+
+  updateLatestDateBadge();
+
+  // Keep it live if calendar.html is open in another tab and changes the shared value
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'checklistNumberInput') updateLatestDateBadge();
+  });
+
+  // Auto-hide the input box on load
+  workspacePanel.classList.add('hidden-controls');
+  toggleUiBtn.textContent = 'Show Markup Editor';
+</script>
+
+</body>
+</html>

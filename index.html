@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="512x512" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<meta name="apple-mobile-web-app-title" content="Verses">
+<script>
+  // Registers the service worker so this page (and its linked pages/assets) work offline
+  // once visited at least once with a connection.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch((err) => {
+        console.warn('Service worker registration failed:', err);
+      });
+    });
+  }
+</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verses</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: "Trebuchet MS", sans-serif;
+            background-color: #f8f9fa;
+            color: #212529;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .hub-container {
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            max-width: 480px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .hub-header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #111;
+        }
+
+        .hub-header p {
+            font-size: 0.95rem;
+            color: #6c757d;
+            margin-bottom: 30px;
+        }
+
+        .nav-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Red buttons, white bold text, no border */
+        .nav-link {
+            display: block;
+            padding: 14px 20px;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #ffffff;
+            text-decoration: none;
+            background-color: #dc3545;
+            border: none;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            text-align: left;
+        }
+
+        /* Subtle hover mechanics */
+        .nav-link:hover {
+            color: #ffffff;
+            background-color: #c82333;
+            transform: translateY(-1px);
+        }
+
+        .nav-link:active {
+            transform: translateY(0);
+        }
+
+        .nav-link span {
+            float: right;
+            color: #ffffff;
+            transition: color 0.2s ease;
+        }
+
+        .nav-link:hover span {
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="hub-container">
+        <div class="hub-header">
+        </div>
+
+        <nav class="nav-menu">
+           
+            <a href="verse.html" class="nav-link">
+                🎨 Verse Picker <span>&rarr;</span>
+            </a>
+           
+            <a href="bible.html" class="nav-link">
+                📖 Bible <span>&rarr;</span>
+            </a>
+        </nav>
+    </div>
+
+</body>
+</html>
