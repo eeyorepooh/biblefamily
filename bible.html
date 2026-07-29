@@ -1147,46 +1147,66 @@
       }
   });
 
-  textInput.addEventListener('input', updateView);
+  // Persist the master workspace text every time it's edited, and load it back on
+  // return visits — mirroring verse.html's own markupInput/'verseBuilderMarkup' pattern.
+  const BIBLE_BUILDER_KEY = 'bibleBuilderMarkup';
+  textInput.addEventListener('input', () => {
+      updateView();
+      safeSetStorage(BIBLE_BUILDER_KEY, textInput.value);
+  });
 
-  // The text that loads when the page first opens is now pulled from biblecontents.txt,
-  // a plain text file that must sit in the same directory as this HTML file. Edit that
-  // file (not this script) to change the book's contents.
+  // The text that loads when the page first opens: restore last-saved value from this
+  // browser's local storage, if any; otherwise pull the initial seed from biblecontents.txt
+  // (a plain text file that must sit in the same directory as this HTML file), falling back
+  // to biblecontentsfamily.txt, and finally to a built-in placeholder if neither is present.
   const fallbackText = `<h1> Psalms </h1>
 `;
 
-  fetch('biblecontents.txt')
-      .then(response => {
-          if (!response.ok) throw new Error('biblecontents.txt not found');
-          return response.text();
-      })
-      .then(text => {
-          textInput.value = text;
-          updateView();
-          // Wait a frame so layout has settled before measuring scroll position
-          requestAnimationFrame(handleHashNavigation);
-      })
-      .catch(err => {
-          // biblecontents.txt is missing (or failed to load) — try the family variant
-          // before falling back to the built-in placeholder text.
-          console.warn('Could not load biblecontents.txt, trying biblecontentsfamily.txt.', err);
-          fetch('biblecontentsfamily.txt')
-              .then(response => {
-                  if (!response.ok) throw new Error('biblecontentsfamily.txt not found');
-                  return response.text();
-              })
-              .then(text => {
-                  textInput.value = text;
-                  updateView();
-                  requestAnimationFrame(handleHashNavigation);
-              })
-              .catch(err2 => {
-                  console.warn('Could not load biblecontentsfamily.txt, using fallback text.', err2);
-                  textInput.value = fallbackText;
-                  updateView();
-                  requestAnimationFrame(handleHashNavigation);
-              });
-      });
+  const savedBibleMarkup = safeGetStorage(BIBLE_BUILDER_KEY);
+
+  if (savedBibleMarkup !== null) {
+      textInput.value = savedBibleMarkup;
+      updateView();
+      requestAnimationFrame(handleHashNavigation);
+  } else {
+      fetch('biblecontents.txt')
+          .then(response => {
+              if (!response.ok) throw new Error('biblecontents.txt not found');
+              return response.text();
+          })
+          .then(text => {
+              textInput.value = text;
+              // Persist the seed immediately so it survives a refresh even before the
+              // textarea is ever edited.
+              safeSetStorage(BIBLE_BUILDER_KEY, text);
+              updateView();
+              // Wait a frame so layout has settled before measuring scroll position
+              requestAnimationFrame(handleHashNavigation);
+          })
+          .catch(err => {
+              // biblecontents.txt is missing (or failed to load) — try the family variant
+              // before falling back to the built-in placeholder text.
+              console.warn('Could not load biblecontents.txt, trying biblecontentsfamily.txt.', err);
+              fetch('biblecontentsfamily.txt')
+                  .then(response => {
+                      if (!response.ok) throw new Error('biblecontentsfamily.txt not found');
+                      return response.text();
+                  })
+                  .then(text => {
+                      textInput.value = text;
+                      safeSetStorage(BIBLE_BUILDER_KEY, text);
+                      updateView();
+                      requestAnimationFrame(handleHashNavigation);
+                  })
+                  .catch(err2 => {
+                      console.warn('Could not load biblecontentsfamily.txt, using fallback text.', err2);
+                      textInput.value = fallbackText;
+                      safeSetStorage(BIBLE_BUILDER_KEY, fallbackText);
+                      updateView();
+                      requestAnimationFrame(handleHashNavigation);
+                  });
+          });
+  }
 </script>
 
 </body>
